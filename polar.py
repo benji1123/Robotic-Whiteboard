@@ -263,7 +263,7 @@ def MotorCoords(coords, xMax, xMin, yMax, yMin):
 	print(xMax)
 	print(yMax)
 	coords = coords[1:] 
-	m = open("motor_coords.txt", "wt")
+	m = open("code.txt", "wt")
 	for xy in coords:
 		# normalize xy for scaling in Arduino 
 		x = (xy[0] - xMin)/(xMax - xMin)
