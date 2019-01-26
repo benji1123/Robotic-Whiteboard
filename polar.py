@@ -210,38 +210,69 @@ def dfstoPath(G, startx, starty):
 	return mvmts, nodes
 				
 
+# DIGITAL DRAWER
+# get set of absolute coordaintes, which
+# will be converted to a motor-readable format .txt file
 def turtleDraw(filename):
 	file_no_extension = filename[0:-4]
 
-	# LOAD PATH-FILE, which contains list of relative-coordinates
+	# Load path-file
 	with open(file_no_extension+'_path.p', 'rb') as myfile:
 		data = pickle.load(myfile) # un-compressed instructions [list of tuples]
 
-	# Starting coordinates are first2 elements of list
-	# Build Series of Absolute Coordinates from Relative-Coordinates
-	coords = [] # store coordinates here
-	startx, starty = -200,-200						# the image is drawn starting at the bottom-left
-	coords.append((startx,starty))
+	# Set starting Coordinates
+	coords = [] 
+	coords.append((-200,-200)) # start-coord
 
-	i=1 # index-0 is the starting-coord, but we manually set this to top left of board
+	# Build Array of (absolute) Coordinates 
+	i=1 
+	x_max = -100000000000000000000000000
+	x_min = 100000000000000000000000000
+	y_max = -100000000000000000000000000
+	y_min = 1000000000000000000000000
+
 	while i < len(data):
 		next = (coords[i-1][0] + data[i][0] , coords[i-1][1] + data[i][1])
 		coords.append(next)
+
+		if next[0] > x_max: x_max = next[0];	#update max for scaling
+		if next[0] < x_min: x_min = next[0];
+
+		if next[1] > y_max: y_max = next[1];
+		if next[1] < y_min: y_min = next[1];
 		i+=1
 
-	# create turtle drawing object
-	# go to starting-pos
+	# CONVERT to MOTOR FILE FORMAT
+	MotorCoords(coords, x_max, x_min, y_max, y_min)
+
+	# SIMULATE DRAWING PATH
 	fast = turtle.Turtle() # drawing object
 	fast.color("purple")
-	fast.penup(); fast.setposition(coords[0]); fast.pendown();
+	fast.penup(); fast.setposition(coords[0]); fast.pendown(); # go to starting-pos
 
 	# draw image via coordinates-array
 	i=0
 	while i < (len(data)):
-		print(i,"/",len(data))
+		#print(i,"/",len(data))
 		fast.goto(coords[i])
 		i+=1
 	turtle.getscreen()._root.mainloop() # keep drawing open after it is complete
+
+
+def MotorCoords(coords, xMax, xMin, yMax, yMin):
+	print(xMax)
+	print(yMax)
+	coords = coords[1:] 
+	m = open("motor_coords.txt", "wt")
+	for xy in coords:
+		# normalize xy for scaling in Arduino 
+		x = (xy[0] - xMin)/(xMax - xMin)
+		y = (xy[1]- yMin)/(yMax - yMin)
+		instruction = "X" + str(x) + " Y" + str(y) + "\n"
+		m.write(instruction)
+
+	m.write("\n") # newline indicates file's end
+	m.close()
 
 reduceImage(filename)
 turtleDraw(filename)
