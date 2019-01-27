@@ -1,5 +1,5 @@
 
-''' 
+'''
 # PolarGraph Project
 This Script: Reduces Images to Edges for Sketching
 
@@ -130,7 +130,6 @@ def pa_to_path(filename): # file = img_name
 	print("preview")
 	f = filename[0:-4] + '_preview.png'
 	image = PIL.Image.open(f)
-	image = image.rotate(180)
 	image = image.transpose(Image.FLIP_LEFT_RIGHT)
 	imageArr = np.array(image)
 	y,x,z = imageArr.shape
@@ -145,7 +144,7 @@ def pa_to_path(filename): # file = img_name
 		for iy in  range(y):
 			if imgSimple[iy,ix] == 255: # [iy,ix] or [ix,iy] ?
 				neighbors = []
-				for subx in [-2,-1,0,1,2]:     # legal distances between neighbour-nodes
+				for subx in [-2,-1,0,1,2]:     # legal displacements between neighbour-nodes
 					for suby in [-2,-1,0,1,2]:
 						# pos. of neighbouring-node
 						iix = ix+subx
@@ -172,12 +171,9 @@ def pa_to_path(filename): # file = img_name
 	return path, nodes
 
 
-
 # .. DEPTH-FIRST-SERACH
 def dfstoPath(G, startx, starty):
 	T = nx.dfs_tree(G, (startx, starty))
-	print("A\nA\nA\nA\n")
-	#print(T.edges())
 	mvmts = []
 	mvmts.append((startx,starty))
 	nodes = []
@@ -226,53 +222,90 @@ def turtleDraw(filename):
 
 	# Build Array of (absolute) Coordinates 
 	i=1 
-	x_max = -100000000000000000000000000
-	x_min = 100000000000000000000000000
-	y_max = -100000000000000000000000000
-	y_min = 1000000000000000000000000
+	xyMax = -100000000000000000000000000
+	xyMin = 100000000000000000000000000
 
 	while i < len(data):
 		next = (coords[i-1][0] + data[i][0] , coords[i-1][1] + data[i][1])
 		coords.append(next)
-
-		if next[0] > x_max: x_max = next[0];	#update max for scaling
-		if next[0] < x_min: x_min = next[0];
-
-		if next[1] > y_max: y_max = next[1];
-		if next[1] < y_min: y_min = next[1];
+		# Get max/min to do feature-scaling
+		if next[0] > xyMax: xyMax = next[0];	
+		if next[0] < xyMin: xyMin = next[0];
+		if next[1] > xyMax: xyMax = next[1];	
+		if next[1] < xyMin: xyMin = next[1];
 		i+=1
 
 	# CONVERT to MOTOR FILE FORMAT
-	MotorCoords(coords, x_max, x_min, y_max, y_min)
+	MotorCoords(coords, xyMax, xyMin)
 
 	# SIMULATE DRAWING PATH
 	fast = turtle.Turtle() # drawing object
 	fast.color("purple")
-	fast.penup(); fast.setposition(coords[0]); fast.pendown(); # go to starting-pos
+	#fast.penup(); fast.setposition(coords[0]); fast.pendown(); # go to starting-pos
 
 	# draw image via coordinates-array
 	i=0
-	while i < (len(data)):
+	scale = 300
+	offset = 350
+
+	while i < (len(coords)):
 		#print(i,"/",len(data))
-		fast.goto(coords[i])
+		if i == 0:
+			fast.penup()
+
+		x = coords[i][0]
+		y = coords[i][1]
+		x = ((x - xyMin)/(xyMax - xyMin)) *scale+offset
+		y = ((y- xyMin)/(xyMax - xyMin)) *scale+offset
+		fast.goto((x,y))
+
+		if i == 0:
+			fast.pendown()
 		i+=1
 	turtle.getscreen()._root.mainloop() # keep drawing open after it is complete
 
 
-def MotorCoords(coords, xMax, xMin, yMax, yMin):
-	print(xMax)
-	print(yMax)
+	# for xy in coords[1:]:	# 	fast.pendown()
+	# 	print("4")
+	# 	# normalize xy for scaling in Arduino 
+	# 	x = ((xy[0] - xyMin)/(xyMax - xyMin)) *scale+offset
+	# 	y = ((xy[1]- xyMin)/(xyMax - xyMin)) *scale+offset
+	# 	x = (x-offset)/scale
+	# 	y = (y-offset)/scale
+	# 	fast.goto((x,y))
+	# turtle.getscreen()._root.mainloop() 
+
+
+
+def MotorCoords(coords, xyMax, xyMin):
+	scale = 300
+	offset = 350
 	coords = coords[1:] 
 	m = open("code.txt", "wt")
-	for xy in coords:
+	m.write("P1\n")
+
+	# Move Motor to Start-Coordinate
+	_x = ((coords[0][0] - xyMin)/(xyMax - xyMin))*scale+offset
+	_y = ((coords[0][1]- xyMin)/(xyMax - xyMin))*scale+offset
+	instruction = "X" + str(round(_x,1)) + " Y" + str(round(_y,1)) + "\n"
+	m.write(instruction)
+	m.write("P0\n")
+
+	# Store Array to String
+	instructions_string = ""
+
+	# Motor Coordinates
+	for xy in coords[1:]:
 		# normalize xy for scaling in Arduino 
-		x = (xy[0] - xMin)/(xMax - xMin)
-		y = (xy[1]- yMin)/(yMax - yMin)
-		instruction = "X" + str(x) + " Y" + str(y) + "\n"
+		x = ((xy[0] - xyMin)/(xyMax - xyMin))*scale+offset
+		y = ((xy[1]- xyMin)/(xyMax - xyMin))*scale+offset
+		instruction = "X" + str(round(x,1)) + " Y" + str(round(y,1)) + "\n"
+		instructions_string += instruction
 		m.write(instruction)
 
 	m.write("\n") # newline indicates file's end
 	m.close()
+
 
 reduceImage(filename)
 turtleDraw(filename)
