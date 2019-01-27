@@ -22,7 +22,7 @@ import PIL.ImageOps
 import turtle
 import pickle
 import copy
- 
+import readLine
  
 # .............................GET IMAGE FROM LOCAL SYSTEM
 #GUI Based Selection
@@ -162,8 +162,8 @@ def pa_to_path(filename): # file = img_name
     print("DFS complete") 
     x_nodes = [z[0] for z in nodes]
     y_nodes = [z[1] for z in nodes]
-    plt.scatter(x=x_nodes, y=y_nodes,s=1.)               
-    plt.show()
+#    plt.scatter(x=x_nodes, y=y_nodes,s=1.)               
+#    plt.show()
     return path, nodes
  
  
@@ -376,31 +376,7 @@ def turtleDraw(filename):
     # CONVERT to MOTOR FILE FORMAT
     MotorCoords(coords, xyMax, xyMin)
 
-    # create turtle drawing object
-    fast = turtle.Turtle() # drawing object
-    fast.color("blue")
-    fast.penup(); fast.setposition(coords[0]); fast.pendown();
- 
-    # draw image via coordinates-array
-    i=0
-    scale = 300
-    offset = 350
-    while i < (len(data)):
-        print(i,"/",len(data))
-        if i == 0:
-            fast.penup()
-        # Normalize and Scale Coordinates
-        x = coords[i][0]
-        y = coords[i][1]
-        x = ((x - xyMin)/(xyMax - xyMin)) *scale+offset 
-        y = ((y- xyMin)/(xyMax - xyMin)) *scale+offset
-        fast.goto(coords[i])
 
-        if i == 0:
-            fast.pendown()
-
-        i+=1
-    turtle.getscreen()._root.mainloop() # keep drawing open after it is complete
 
     # MOTOR INSTRUCTIONS TRANSLATION
 def MotorCoords(coords, xyMax, xyMin):
@@ -430,6 +406,13 @@ def MotorCoords(coords, xyMax, xyMin):
  
  
 def run(uploaded_file):
+<<<<<<< HEAD
         reduceImage(uploaded_file)
         turtleDraw(uploaded_file)
 >>>>>>> d168b754f86d6558531e38cac6666594abb44c38
+=======
+    reduceImage(uploaded_file)
+    turtleDraw(uploaded_file)
+    print("doneturtle")
+    readLine.draw()
+>>>>>>> 9874e2e518be1e44f0166c2ff0b0d58799c0961d
