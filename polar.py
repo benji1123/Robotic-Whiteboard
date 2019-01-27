@@ -195,7 +195,6 @@ def dfstoPath(G, startx, starty):
 				ydiff_b = dest_b[1] - start_b[1]
 				mvmts.append((xdiff_b, ydiff_b))
 				nodes.append(dest_b)
-
 		start = te[0]
 		dest = te[1]
 		xdiff = dest[0] - start[0]
@@ -235,24 +234,40 @@ def turtleDraw(filename):
 		if next[1] < xyMin: xyMin = next[1];
 		i+=1
 
+	# DATA COMPRESSION --> COORDS
+	dY, dX = coords[1][1]-coords[0][1], coords[1][0]-coords[0][0]
+	pastSlope = 0
+	if dX != 0:
+		pastSlope = (dY)/(dX)
+
+	i=3
+	while i < len(coords):
+		currSlope = 0
+		deltaY, deltaX = coords[i][1]-coords[i-1][1], coords[i][0]-coords[i-1][0]
+		if deltaX != 0:
+				currSlope = (deltaY)/(deltaX)
+
+		# Merge re-occuring slopes
+		tolerance = 0.20*pastSlope
+		if currSlope <= pastSlope+tolerance or currSlope >= pastSlope - tolerance:
+			del coords[i-2:i]
+		i += 1
+		
+
 	# CONVERT to MOTOR FILE FORMAT
 	MotorCoords(coords, xyMax, xyMin)
-
 	# SIMULATE DRAWING PATH
 	fast = turtle.Turtle() # drawing object
 	fast.color("purple")
-	#fast.penup(); fast.setposition(coords[0]); fast.pendown(); # go to starting-pos
 
 	# draw image via coordinates-array
 	i=0
 	scale = 300
 	offset = 350
-
 	while i < (len(coords)):
 		#print(i,"/",len(data))
 		if i == 0:
 			fast.penup()
-
 		x = coords[i][0]
 		y = coords[i][1]
 		x = ((x - xyMin)/(xyMax - xyMin)) *scale+offset
@@ -265,18 +280,6 @@ def turtleDraw(filename):
 	turtle.getscreen()._root.mainloop() # keep drawing open after it is complete
 
 
-	# for xy in coords[1:]:	# 	fast.pendown()
-	# 	print("4")
-	# 	# normalize xy for scaling in Arduino 
-	# 	x = ((xy[0] - xyMin)/(xyMax - xyMin)) *scale+offset
-	# 	y = ((xy[1]- xyMin)/(xyMax - xyMin)) *scale+offset
-	# 	x = (x-offset)/scale
-	# 	y = (y-offset)/scale
-	# 	fast.goto((x,y))
-	# turtle.getscreen()._root.mainloop() 
-
-
-
 def MotorCoords(coords, xyMax, xyMin):
 	scale = 300
 	offset = 350
@@ -287,7 +290,7 @@ def MotorCoords(coords, xyMax, xyMin):
 	# Move Motor to Start-Coordinate
 	_x = ((coords[0][0] - xyMin)/(xyMax - xyMin))*scale+offset
 	_y = ((coords[0][1]- xyMin)/(xyMax - xyMin))*scale+offset
-	instruction = "X" + str(round(_x,1)) + " Y" + str(round(_y,1)) + "\n"
+	instruction = "X" + str(int(_x)) + " Y" + str(int(_y)) + "\n"
 	m.write(instruction)
 	m.write("P0\n")
 
@@ -295,11 +298,13 @@ def MotorCoords(coords, xyMax, xyMin):
 	instructions_string = ""
 
 	# Motor Coordinates
+	counter = 0
 	for xy in coords[1:]:
 		# normalize xy for scaling in Arduino 
+		print(counter," / ",len(coords))
 		x = ((xy[0] - xyMin)/(xyMax - xyMin))*scale+offset
 		y = ((xy[1]- xyMin)/(xyMax - xyMin))*scale+offset
-		instruction = "X" + str(round(x,1)) + " Y" + str(round(y,1)) + "\n"
+		instruction = "X" + str(int(x)) + " Y" + str(int(y)) + "\n"
 		instructions_string += instruction
 		m.write(instruction)
 
