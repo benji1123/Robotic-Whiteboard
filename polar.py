@@ -170,6 +170,149 @@ def pa_to_path(filename): # file = img_name
  
 # .. DEPTH-FIRST-SERACH
 def dfstoPath(G, startx, starty):
+<<<<<<< HEAD
+	T = nx.dfs_tree(G, (startx, starty))
+	mvmts = []
+	mvmts.append((startx,starty))
+	nodes = []
+	Tedges = T.edges()
+	prevte = [None,[z for z in Tedges][0][0]]
+	for te in Tedges:
+		if te[0] == prevte[1]:
+			pass # the node smoothly connects to the next node
+		else:
+			# we need to backtrack first before we can add the movement
+			backtrack_start = prevte[1]
+			backtrack_end = te[0]
+			path_back = nx.shortest_path(G,backtrack_start,backtrack_end)
+
+			for bb in range(len(path_back)-1):
+				start_b = path_back[bb]
+				dest_b  = path_back[bb+1]
+				xdiff_b = dest_b[0] - start_b[0]
+				ydiff_b = dest_b[1] - start_b[1]
+				mvmts.append((xdiff_b, ydiff_b))
+				nodes.append(dest_b)
+		start = te[0]
+		dest = te[1]
+		xdiff = dest[0] - start[0]
+		ydiff = dest[1] - start[1]
+		mvmts.append((xdiff, ydiff))
+		nodes.append(dest)
+		prevte = te
+	return mvmts, nodes
+				
+
+# DIGITAL DRAWER
+# get set of absolute coordaintes, which
+# will be converted to a motor-readable format .txt file
+def turtleDraw(filename):
+	file_no_extension = filename[0:-4]
+
+	# Load path-file
+	with open(file_no_extension+'_path.p', 'rb') as myfile:
+		data = pickle.load(myfile) # un-compressed instructions [list of tuples]
+
+	# Set starting Coordinates
+	coords = [] 
+	coords.append((-200,-200)) # start-coord
+
+	# Build Array of (absolute) Coordinates 
+	i=1 
+	xyMax = -100000000000000000000000000
+	xyMin = 100000000000000000000000000
+
+	while i < len(data):
+		next = (coords[i-1][0] + data[i][0] , coords[i-1][1] + data[i][1])
+		coords.append(next)
+		# Get max/min to do feature-scaling
+		if next[0] > xyMax: xyMax = next[0];	
+		if next[0] < xyMin: xyMin = next[0];
+		if next[1] > xyMax: xyMax = next[1];	
+		if next[1] < xyMin: xyMin = next[1];
+		i+=1
+
+	# DATA COMPRESSION --> COORDS
+	dY, dX = coords[1][1]-coords[0][1], coords[1][0]-coords[0][0]
+	pastSlope = 0
+	if dX != 0:
+		pastSlope = (dY)/(dX)
+
+	i=3
+	while i < len(coords):
+		currSlope = 0
+		deltaY, deltaX = coords[i][1]-coords[i-1][1], coords[i][0]-coords[i-1][0]
+		if deltaX != 0:
+				currSlope = (deltaY)/(deltaX)
+
+		# Merge re-occuring slopes
+		tolerance = 0.20*pastSlope
+		if currSlope <= pastSlope+tolerance or currSlope >= pastSlope - tolerance:
+			del coords[i-2:i]
+		i += 1
+		
+
+	# CONVERT to MOTOR FILE FORMAT
+	MotorCoords(coords, xyMax, xyMin)
+	# SIMULATE DRAWING PATH
+	fast = turtle.Turtle() # drawing object
+	fast.color("purple")
+
+	# draw image via coordinates-array
+	i=0
+	scale = 300
+	offset = 350
+	while i < (len(coords)):
+		#print(i,"/",len(data))
+		if i == 0:
+			fast.penup()
+		x = coords[i][0]
+		y = coords[i][1]
+		x = ((x - xyMin)/(xyMax - xyMin)) *scale+offset
+		y = ((y- xyMin)/(xyMax - xyMin)) *scale+offset
+		fast.goto((x,y))
+
+		if i == 0:
+			fast.pendown()
+		i+=1
+	turtle.getscreen()._root.mainloop() # keep drawing open after it is complete
+
+
+def MotorCoords(coords, xyMax, xyMin):
+	scale = 300
+	offset = 350
+	coords = coords[1:] 
+	m = open("code.txt", "wt")
+	m.write("P1\n")
+
+	# Move Motor to Start-Coordinate
+	_x = ((coords[0][0] - xyMin)/(xyMax - xyMin))*scale+offset
+	_y = ((coords[0][1]- xyMin)/(xyMax - xyMin))*scale+offset
+	instruction = "X" + str(int(_x)) + " Y" + str(int(_y)) + "\n"
+	m.write(instruction)
+	m.write("P0\n")
+
+	# Store Array to String
+	instructions_string = ""
+
+	# Motor Coordinates
+	counter = 0
+	for xy in coords[1:]:
+		# normalize xy for scaling in Arduino 
+		print(counter," / ",len(coords))
+		x = ((xy[0] - xyMin)/(xyMax - xyMin))*scale+offset
+		y = ((xy[1]- xyMin)/(xyMax - xyMin))*scale+offset
+		instruction = "X" + str(int(x)) + " Y" + str(int(y)) + "\n"
+		instructions_string += instruction
+		m.write(instruction)
+
+	m.write("\n") # newline indicates file's end
+	m.close()
+
+
+reduceImage(filename)
+turtleDraw(filename)
+=======
     T = nx.dfs_tree(G, (startx, starty))
     print("A\nA\nA\nA\n")
     #print(T.edges())
@@ -219,7 +362,7 @@ def turtleDraw(filename):
  
     i=1 # index-0 is the starting-coord, but we manually set this to top left of board
     xyMax = -100000000000000000000000000
-    xyMin = 1000000000000000000000000000
+    xyMin = 100000000000000000000000000
     while i < len(data):
         next = (coords[i-1][0] + data[i][0] , coords[i-1][1] + data[i][1])
         coords.append(next)
@@ -230,24 +373,6 @@ def turtleDraw(filename):
         if next[1] < xyMin: xyMin = next[1];
         i+=1
  
-    # DATA COMPRESSION --> COORDS
-    dY, dX = coords[1][1]-coords[0][1], coords[1][0]-coords[0][0]
-    pastSlope = 0
-    if dX != 0:
-        pastSlope = (dY)/(dX)
-    i=3
-    while i < len(coords):
-        currSlope = 0
-        deltaY, deltaX = coords[i][1]-coords[i-1][1], coords[i][0]-coords[i-1][0]
-        if deltaX != 0:
-                currSlope = (deltaY)/(deltaX)
-
-        # Merge re-occuring slopes
-        tolerance = 0.20*pastSlope
-        if currSlope <= pastSlope+tolerance or currSlope >= pastSlope - tolerance:
-            del coords[i-2:i]
-        i += 1
-
     # CONVERT to MOTOR FILE FORMAT
     MotorCoords(coords, xyMax, xyMin)
 
@@ -278,24 +403,21 @@ def turtleDraw(filename):
     turtle.getscreen()._root.mainloop() # keep drawing open after it is complete
 
     # MOTOR INSTRUCTIONS TRANSLATION
-    def MotorCoords(coords, xyMax, xyMin):
+def MotorCoords(coords, xyMax, xyMin):
     scale = 300
     offset = 350
     coords = coords[1:] 
     m = open("code.txt", "wt")
     m.write("P1\n")
-
-    # Move Motor to Start-Coordinate
+        # Move Motor to Start-Coordinate
     _x = ((coords[0][0] - xyMin)/(xyMax - xyMin))*scale+offset
     _y = ((coords[0][1]- xyMin)/(xyMax - xyMin))*scale+offset
     instruction = "X" + str(int(_x)) + " Y" + str(int(_y)) + "\n"
     m.write(instruction)
     m.write("P0\n")
-
-    # Store Array to String
+        # Store Array to String
     instructions_string = ""
-
-    # Motor Coordinates
+        # Motor Coordinates
     for xy in coords[1:]:
         # normalize xy for scaling in Arduino 
         x = ((xy[0] - xyMin)/(xyMax - xyMin))*scale+offset
@@ -303,7 +425,6 @@ def turtleDraw(filename):
         instruction = "X" + str(int(x)) + " Y" + str(int(y)) + "\n"
         instructions_string += instruction
         m.write(instruction)
-
     m.write("\n") # newline indicates file's end
     m.close()
  
@@ -311,3 +432,4 @@ def turtleDraw(filename):
 def run(uploaded_file):
         reduceImage(uploaded_file)
         turtleDraw(uploaded_file)
+>>>>>>> d168b754f86d6558531e38cac6666594abb44c38
