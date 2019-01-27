@@ -1,1 +1,1 @@
-![F R A C T A L](assets/fractalpng)
+![F R A C T A L](assets/fractal.png)
