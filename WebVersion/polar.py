@@ -1,13 +1,11 @@
 ''' 
 # PolarGraph Project
-This Script: Reduces Images to Edges for Sketching 
+This Script: Reduces Images to Edges for Sketching
     [1] Liam S. -> hardware
     [2] Ben L.  -> software
 '''
-
 import numpy as np
 import cv2
-from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 import PIL
 from PIL import Image, ImageFilter
@@ -19,50 +17,40 @@ import PIL.ImageOps
 import turtle
 import pickle
 import copy
-  
-IMAGEDIR = "generated_files/"
-PREVIEW = True
+ 
 
-# Get Image From Local FileSys
-Tk().withdraw()
-file_address = askopenfilename()
-original_img = cv2.imread(file_address)
-filename = IMAGEDIR+"image_to_draw.png"
-cv2.imwrite(filename, original_img)
-
+PREVIEW = False
 
 # Intiate Path Creation Process
 def createPath(filename):
-    # get image-outline
+    # Image Processing
     edges = 255-draw(filename) 
-    image = PIL.Image.open(filename[0:-4] + "_canny.png")
+    image = PIL.Image.open(filename[0:-4] + "_canny.png") # get cannied-iamge from local file system
     image.thumbnail((256,144), Image.NEAREST)
-    
-    # get largest connection section of outline
-    simplified = singleLineImage(edges)
-    img = PIL.Image.fromarray(edges)
-
-    # derive a drawing-path (outline is saved to a file) 
+    simplified = singleLineImage(edges) # reduce to one-stroke drawable
+    img = PIL.Image.fromarray(edges)    
+ 
+    # Path Output
+    # send  simplified-image to the path-finding algorithm,
+    # which a drawing-path will be identified 
     PIL.Image.fromarray(simplified).convert('RGBA').save(filename[0:-4] + '_preview.png')
     pp,nn = pa_to_path(filename)
-    
     with open(filename[0:-4]+'_path.p', 'wb') as fp: # output path-file
         pickle.dump(pp, fp)
-    
-    # load_path(filename) 
+    load_path(filename) # write file containing drawing-path coordinates 
 
  
 # Apply Canny Edge Detection
 def draw(filename):
 
     def autoCanny(image):
-        # auto-generate parameters
-        sigma=0.33
-        med = np.median(image)
+        sigma=0.33                  # sigma^ = threshold^
+        med = np.median(image)      # px-intensity
         lower = int(max(0, med * (1.0-sigma)))
         upper = int(min(255, med * (1.0+sigma)))
-
-        return cv2.Canny(image, lower, upper)
+        # Edge Detection using computed Median 
+        edgedImage = cv2.Canny(image, lower, upper)
+        return edgedImage
 
     image = cv2.imread(filename)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -73,7 +61,7 @@ def draw(filename):
     return auto
  
  
-# Remove Noise in Image's Outline
+# Reduce Image to Usable Pixels
 def singleLineImage(image):
     x,y = image.shape
     tol = 2 # max dist. btwn neighbor-nodes 
@@ -81,6 +69,7 @@ def singleLineImage(image):
     image[:,y-tol:]=255
     image[0,:] = 255
     image[x-tol:,:] = 255
+    newImg = np.ones((x,y))*255
     imgSimple = image
  
     G = nx.Graph()
@@ -88,6 +77,7 @@ def singleLineImage(image):
         for iy in range(y):
             if imgSimple[ix,iy] == 0: # draw black-px's
                 # find neighbour black-px
+                neighbours = []
                 for subx in [-2,-1,0,1,2]: # legal distances between neighbour-nodes
                     for suby in [-2,-1,0,1,2]:
                         # pos. of neighbouring-node
@@ -95,23 +85,17 @@ def singleLineImage(image):
                         # check if edge is formed
                         if imgSimple[iix,iiy] == 0:
                             G.add_edge((ix,iy), (iix,iiy))
-    '''
-    The generated graph consists
-    of multiple subgraphs, as not all
-    px are connected. Use the LARGEST
-    subgraph, which is the most accurate.
-    '''
+    
+    # Longest Path max's Resolution
     G = max(nx.connected_component_subgraphs(G), key=len)
-
-    # Init Formulated Image
-    newImg = np.ones((x,y))*255
     for node in G.nodes:
         newImg[node[0], node[1]] = 0
+
     return newImg
 
 
 # (helper) load drawing-path
-def load_path(filename): 
+def load_path(filename): # file = img_name 
     with open(filename[0:-4] + '_path.p', 'rb') as myfile:
         data = pickle.load(myfile)
     return data
@@ -201,7 +185,7 @@ def dfstoPath(G, startx, starty):
  
 def turtleDraw(filename):
     # read the generated coords-file in dir
-    file_no_extension = filename.split('.')[0]
+    file_no_extension = filename[0:-4]
     with open(file_no_extension+'_path.p', 'rb') as myfile:
         data = pickle.load(myfile)
  
@@ -259,7 +243,7 @@ def MotorCoords(coords, xyMax, xyMin):
     offset = 350
     
     coords = coords[1:] 
-    m = open(IMAGEDIR+"code.txt", "wt")
+    m = open("code.txt", "wt")
     m.write("P1\n")
     
     # Ensure Marker goes to Starting Position before Drawing
@@ -283,6 +267,7 @@ def MotorCoords(coords, xyMax, xyMin):
     m.close()
  
 
-createPath(filename)
-turtleDraw(filename)
-print('coordinate file generated: generated_files/code.txt')
+# Execute this
+def run(uploaded_file):
+        createPath(uploaded_file)
+        turtleDraw(uploaded_file)
